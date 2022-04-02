@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021 The HedgeDoc developers (see AUTHORS file)
+ * SPDX-FileCopyrightText: 2022 The HedgeDoc developers (see AUTHORS file)
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
@@ -16,8 +16,9 @@ import { MediaConfig } from './config/media.config';
 import { ErrorExceptionMapping } from './errors/error-mapping';
 import { ConsoleLoggerService } from './logger/console-logger.service';
 import { BackendType } from './media/backends/backend-type.enum';
+import { BinaryWebsocketAdapter } from './realtime/websocket/binary-websocket.adapter';
+import { SessionService } from './session/session.service';
 import { setupSpecialGroups } from './utils/createSpecialGroups';
-import { setupFrontendProxy } from './utils/frontend-integration';
 import { setupSessionMiddleware } from './utils/session';
 import { setupValidationPipe } from './utils/setup-pipes';
 import { setupPrivateApiDocs, setupPublicApiDocs } from './utils/swagger';
@@ -36,6 +37,8 @@ async function bootstrap(): Promise<void> {
   const authConfig = configService.get<AuthConfig>('authConfig');
   const mediaConfig = configService.get<MediaConfig>('mediaConfig');
 
+  app.useWebSocketAdapter(new BinaryWebsocketAdapter(app));
+
   if (!appConfig || !databaseConfig || !authConfig || !mediaConfig) {
     logger.error('Could not initialize config, aborting.', 'AppBootstrap');
     process.exit(1);
@@ -52,12 +55,12 @@ async function bootstrap(): Promise<void> {
       `Serving OpenAPI docs for private api under '/private/apidoc'`,
       'AppBootstrap',
     );
-    await setupFrontendProxy(app, logger);
   }
 
   await setupSpecialGroups(app);
 
-  setupSessionMiddleware(app, authConfig, databaseConfig);
+  const sessionService = app.get(SessionService);
+  setupSessionMiddleware(app, authConfig, sessionService.getTypeormStore());
 
   app.enableCors({
     origin: appConfig.rendererOrigin,

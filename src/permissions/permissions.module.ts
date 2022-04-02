@@ -16,7 +16,6 @@ import { PermissionsService } from './permissions.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Note]),
-    NotesModule,
     UsersModule,
     GroupsModule,
     LoggerModule,

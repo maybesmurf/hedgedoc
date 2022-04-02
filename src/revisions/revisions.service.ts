@@ -27,7 +27,6 @@ export class RevisionsService {
     private readonly logger: ConsoleLoggerService,
     @InjectRepository(Revision)
     private revisionRepository: Repository<Revision>,
-    @Inject(forwardRef(() => NotesService)) private notesService: NotesService,
     private editService: EditService,
   ) {
     this.logger.setContext(RevisionsService.name);

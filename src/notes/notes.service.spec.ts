@@ -301,21 +301,6 @@ describe('NotesService', () => {
     });
   });
 
-  describe('getNoteContent', () => {
-    it('works', async () => {
-      const content = 'testContent';
-      jest
-        .spyOn(noteRepo, 'save')
-        .mockImplementation(async (note: Note): Promise<Note> => note);
-      const newNote = await service.createNote(content, null);
-      const revisions = await newNote.revisions;
-      jest.spyOn(revisionRepo, 'findOne').mockResolvedValueOnce(revisions[0]);
-      await service.getNoteContent(newNote).then((result) => {
-        expect(result).toEqual(content);
-      });
-    });
-  });
-
   describe('getLatestRevision', () => {
     it('works', async () => {
       const content = 'testContent';
@@ -390,20 +375,6 @@ describe('NotesService', () => {
           service.getNoteByIdOrAlias(forbiddenNoteId),
         ).rejects.toThrow(ForbiddenIdError);
       });
-    });
-  });
-
-  describe('deleteNote', () => {
-    it('works', async () => {
-      const user = User.create('hardcoded', 'Testy') as User;
-      const note = Note.create(user) as Note;
-      jest
-        .spyOn(noteRepo, 'remove')
-        .mockImplementationOnce(async (entry, _) => {
-          expect(entry).toEqual(note);
-          return entry;
-        });
-      await service.deleteNote(note);
     });
   });
 

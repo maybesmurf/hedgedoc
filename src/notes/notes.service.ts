@@ -16,6 +16,7 @@ import {
 import { GroupsService } from '../groups/groups.service';
 import { HistoryEntry } from '../history/history-entry.entity';
 import { ConsoleLoggerService } from '../logger/console-logger.service';
+import { RealtimeNoteService } from '../realtime/realtime-note/realtime-note.service';
 import { Revision } from '../revisions/revision.entity';
 import { RevisionsService } from '../revisions/revisions.service';
 import { User } from '../users/user.entity';
@@ -39,11 +40,12 @@ export class NotesService {
     @InjectRepository(User) private userRepository: Repository<User>,
     @Inject(UsersService) private usersService: UsersService,
     @Inject(GroupsService) private groupsService: GroupsService,
-    @Inject(forwardRef(() => RevisionsService))
     private revisionsService: RevisionsService,
     @Inject(noteConfiguration.KEY)
     private noteConfig: NoteConfig,
     @Inject(forwardRef(() => AliasService)) private aliasService: AliasService,
+    @Inject(forwardRef(() => RealtimeNoteService))
+    private realtimeNoteService: RealtimeNoteService,
   ) {
     this.logger.setContext(NotesService.name);
   }
@@ -123,7 +125,10 @@ export class NotesService {
    * @return {string} the content of the note
    */
   async getNoteContent(note: Note): Promise<string> {
-    return (await this.getLatestRevision(note)).content;
+    const realtimeNote = this.realtimeNoteService.getRealtimeNote(note.id);
+    return realtimeNote
+      ? realtimeNote.getYDoc().getCurrentContent()
+      : (await this.getLatestRevision(note)).content;
   }
 
   /**
