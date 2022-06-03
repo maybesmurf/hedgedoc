@@ -3,19 +3,12 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { decoding } from 'lib0';
 import { encoding } from 'lib0';
-import { Decoder } from 'lib0/decoding';
-import {
-  applyAwarenessUpdate,
-  Awareness,
-  encodeAwarenessUpdate,
-} from 'y-protocols/awareness';
-import { readSyncMessage, writeSyncStep1, writeUpdate } from 'y-protocols/sync';
+import { Awareness, encodeAwarenessUpdate } from 'y-protocols/awareness';
+import { writeSyncStep1, writeUpdate } from 'y-protocols/sync';
 import { Doc } from 'yjs';
 
-import { MessageType } from '../message-type.enum';
-import { WebsocketConnection } from './websocket-connection';
+import { MessageType } from './message-type.enum';
 
 export function encodeAwarenessMessage(
   awareness: Awareness,
@@ -45,23 +38,15 @@ export function encodeInitialSyncMessage(yDoc: Doc): Uint8Array {
   return encoding.toUint8Array(encoder);
 }
 
-export function decodeSyncMessage(
-  decoder: Decoder,
-  yDoc: Doc,
-  transactionOrigin: WebsocketConnection,
-): Uint8Array | undefined {
+export function encodePingMessage(): Uint8Array {
   const encoder = encoding.createEncoder();
-  encoding.writeVarUint(encoder, MessageType.SYNC);
-  readSyncMessage(decoder, encoder, yDoc, transactionOrigin);
-  if (encoding.length(encoder) > 1) {
-    return encoding.toUint8Array(encoder);
-  }
+  encoding.writeVarUint(encoder, MessageType.PING);
+  return encoding.toUint8Array(encoder);
 }
 
-export function decodeAwarenessMessage(
-  awareness: Awareness,
-  decoder: Decoder,
-  origin: WebsocketConnection,
-): void {
-  applyAwarenessUpdate(awareness, decoding.readVarUint8Array(decoder), origin);
+export function encodePongMessage(): Uint8Array {
+  const encoder = encoding.createEncoder();
+  encoding.writeVarUint(encoder, MessageType.PONG);
+  return encoding.toUint8Array(encoder);
 }
+

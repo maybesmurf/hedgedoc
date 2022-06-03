@@ -21,7 +21,7 @@ import { PermissionsService } from '../../permissions/permissions.service';
 import { SessionService } from '../../session/session.service';
 import { UsersService } from '../../users/users.service';
 import { HEDGEDOC_SESSION } from '../../utils/session';
-import { MessageType } from '../message-type.enum';
+import { MessageType } from '../messages/message-type.enum';
 import { RealtimeNoteService } from '../realtime-note/realtime-note.service';
 import { WebsocketConnection } from '../realtime-note/websocket-connection';
 import { extractNoteIdFromRealtimePath } from './extract-note-id-from-realtime-path';

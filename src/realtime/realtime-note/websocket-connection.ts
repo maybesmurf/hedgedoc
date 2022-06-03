@@ -8,12 +8,12 @@ import { Decoder } from 'lib0/decoding';
 import WebSocket from 'ws';
 
 import { User } from '../../users/user.entity';
-import { MessageType } from '../message-type.enum';
-import { ConnectionKeepAlivePing } from './connection-keep-alive-ping';
 import {
   encodeAwarenessMessage,
   encodeInitialSyncMessage,
-} from './encode-utils';
+} from '../messages/encoding';
+import { MessageType } from '../messages/message-type.enum';
+import { ConnectionKeepAlivePing } from './connection-keep-alive-ping';
 import { RealtimeNote } from './realtime-note';
 
 /**
@@ -37,7 +37,7 @@ export class WebsocketConnection {
     private user: User,
     private realtimeNote: RealtimeNote,
   ) {
-    this.connectionKeepAlivePing = new ConnectionKeepAlivePing(websocket);
+    this.connectionKeepAlivePing = new ConnectionKeepAlivePing(this.websocket);
     this.sendInitialSync();
     this.sendAwarenessState();
     this.websocket.on('close', () => {
@@ -102,6 +102,7 @@ export class WebsocketConnection {
     messageType: MessageType,
     decoder: Decoder,
   ): void {
-    this.realtimeNote.handleIncomingMessage(messageType, decoder, this);
+    this.connectionKeepAlivePing.checkForPingPongMessage(messageType) ||
+      this.realtimeNote.handleIncomingMessage(messageType, decoder, this);
   }
 }

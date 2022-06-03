@@ -9,7 +9,7 @@ import { MessageMappingProperties } from '@nestjs/websockets';
 import { decoding } from 'lib0';
 import WebSocket, { Server, ServerOptions } from 'ws';
 
-import { MessageType } from '../message-type.enum';
+import { MessageType } from '../messages/message-type.enum';
 
 /**
  * Sets up a websocket server that handles binary decoded realtime messages.

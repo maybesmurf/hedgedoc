@@ -6,7 +6,8 @@
 import { Decoder } from 'lib0/decoding';
 import { Doc } from 'yjs';
 
-import { decodeSyncMessage, encodeSyncMessage } from './encode-utils';
+import { decodeSyncMessage } from '../messages/decoding';
+import { encodeSyncMessage } from '../messages/encoding';
 import { RealtimeNote } from './realtime-note';
 import { WebsocketConnection } from './websocket-connection';
 

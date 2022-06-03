@@ -7,7 +7,7 @@ import { Logger } from '@nestjs/common';
 import { Decoder } from 'lib0/decoding';
 import { Awareness } from 'y-protocols/awareness';
 
-import { MessageType } from '../message-type.enum';
+import { MessageType } from '../messages/message-type.enum';
 import { WebsocketAwareness } from './websocket-awareness';
 import { WebsocketConnection } from './websocket-connection';
 import { WebsocketDoc } from './websocket-doc';
