@@ -3,11 +3,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { Decoder } from 'lib0/decoding';
+import { encodeDocumentUpdateMessage } from '@hedgedoc/realtime-communication';
 import { Doc } from 'yjs';
 
-import { decodeSyncMessage } from '../messages/decoding';
-import { encodeSyncMessage } from '../messages/encoding';
 import { RealtimeNote } from './realtime-note';
 import { WebsocketConnection } from './websocket-connection';
 
@@ -58,33 +56,13 @@ export class WebsocketDoc extends Doc {
     update: Uint8Array,
     origin: WebsocketConnection,
   ): void {
-    const binaryUpdate = encodeSyncMessage(update);
-    this.realtimeNote.getConnections().forEach((client) => {
-      if (origin !== client) {
-        client.send(binaryUpdate);
+    const updateMessage = encodeDocumentUpdateMessage(update);
+    const connections = this.realtimeNote.getConnections();
+    connections.forEach((client) => {
+      if (origin !== client && client.isSynced()) {
+        client.send(updateMessage);
       }
     });
-  }
-
-  /**
-   * Processes incoming SYNC messages.
-   *
-   * We're receiving a sync message from any client.
-   * This is processed via {@link decodeSyncMessage}, which also incorporates this message in the {@link Doc YDoc}.
-   * If {@link decodeSyncMessage} has generated a response, this response is send to the client.
-   * All other clients are informed about the changes in the {@link Doc YDoc} via {@link distributeYDocUpdate}.
-   *
-   * @param client - the client who sent us the message
-   * @param decoder - the decoder object for this message
-   */
-  public processIncomingSyncMessage(
-    client: WebsocketConnection,
-    decoder: Decoder,
-  ): void {
-    const response = decodeSyncMessage(decoder, this, client);
-    if (response) {
-      client.send(response);
-    }
   }
 
   /**

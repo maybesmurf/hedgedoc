@@ -3,25 +3,27 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import {
+  applyAwarenessUpdateMessage,
+  applyDocumentUpdateMessage,
+  ConnectionKeepAliveHandler,
+  encodeAwarenessUpdateMessage,
+  encodeCompleteDocumentStateRequestMessage,
+} from '@hedgedoc/realtime-communication';
+import { MessageType } from '@hedgedoc/realtime-communication';
+import { BinaryMessageTransporter } from '@hedgedoc/realtime-communication';
+import { encodeCompleteDocumentStateAnswerMessage } from '@hedgedoc/realtime-communication/dist/messages/complete-document-state-answer-message';
 import { Logger } from '@nestjs/common';
-import { Decoder } from 'lib0/decoding';
 import WebSocket from 'ws';
 
 import { User } from '../../users/user.entity';
-import {
-  encodeAwarenessMessage,
-  encodeInitialSyncMessage,
-} from '../messages/encoding';
-import { MessageType } from '../messages/message-type.enum';
-import { ConnectionKeepAlivePing } from './connection-keep-alive-ping';
 import { RealtimeNote } from './realtime-note';
 
 /**
  * This class warps the connection from a client to a {@link RealtimeNote} and adds some additional methods.
  */
-export class WebsocketConnection {
+export class WebsocketConnection extends BinaryMessageTransporter {
   protected readonly logger = new Logger(WebsocketConnection.name);
-  private connectionKeepAlivePing: ConnectionKeepAlivePing;
 
   /**
    * Instantiates the websocket connection wrapper for a websocket connection.
@@ -37,41 +39,70 @@ export class WebsocketConnection {
     private user: User,
     private realtimeNote: RealtimeNote,
   ) {
-    this.connectionKeepAlivePing = new ConnectionKeepAlivePing(this.websocket);
-    this.sendInitialSync();
-    this.sendAwarenessState();
-    this.websocket.on('close', () => {
-      this.disconnect();
+    super();
+    this.websocket = websocket;
+    websocket.binaryType = 'arraybuffer';
+    websocket.on('message', (data) => this.decodeMessage(data as ArrayBuffer));
+    websocket.on('error', (error) => {
+      this.logger.error(error);
+      websocket.close();
     });
-    this.websocket.on('error', (error) => {
-      this.logger.error(
-        'Error in websocket connection.',
-        error.message,
-        'handleConnection',
+    websocket.on('close', this.onClose.bind(this));
+
+    this.on('disconnected', () => {
+      this.realtimeNote.removeClient(this);
+    });
+
+    new ConnectionKeepAliveHandler(this);
+    //this.bindAwarenessMessageEvents();
+    this.bindDocumentSyncMessageEvents();
+
+    this.onOpen();
+  }
+
+  private bindAwarenessMessageEvents(): void {
+    this.on(MessageType.AWARENESS_UPDATE, (encoder, decoder) => {
+      applyAwarenessUpdateMessage(
+        decoder,
+        this.realtimeNote.getAwareness(),
+        this,
       );
-      this.disconnect();
+    });
+    this.on(MessageType.COMPLETE_AWARENESS_STATE_REQUEST, () => {
+      this.send(
+        encodeAwarenessUpdateMessage(this.realtimeNote.getAwareness(), [
+          ...this.realtimeNote.getAwareness().getStates().keys(),
+        ]),
+      );
     });
   }
 
-  /**
-   * Initializes the Yjs client by sending the first step of the handshake.
-   */
-  public sendInitialSync(): void {
-    this.send(encodeInitialSyncMessage(this.realtimeNote.getYDoc()));
+  private bindDocumentSyncMessageEvents(): void {
+    this.on('ready', () => {
+      this.send(
+        encodeCompleteDocumentStateRequestMessage(this.realtimeNote.getYDoc()),
+      );
+    });
+
+    this.on(MessageType.COMPLETE_DOCUMENT_STATE_REQUEST, (encoder, decoder) => {
+      console.log('Received REQUEST_INITIAL_DOCUMENT_STATE');
+      const yDoc = this.realtimeNote.getYDoc();
+      this.send(encodeCompleteDocumentStateAnswerMessage(yDoc, decoder));
+    });
+
+    this.on(MessageType.DOCUMENT_UPDATE, (encoder, decoder) => {
+      applyDocumentUpdateMessage(decoder, this.realtimeNote.getYDoc(), this);
+      console.log(
+        'Received DOCUMENT_UPDATE',
+        this.realtimeNote.getYDoc().getText('codemirror').toString(),
+      );
+    });
   }
 
-  /**
-   * Sends the awareness state of the assigned {@link RealtimeNote} to the client.
-   */
-  public sendAwarenessState(): void {
-    this.send(encodeAwarenessMessage(this.realtimeNote.getAwareness()));
+  public disconnect(): void {
+    this.websocket.close();
   }
 
-  /**
-   * Sends binary data to the client. Closes the connection on errors.
-   *
-   * @param content The binary data to send.
-   */
   public send(content: Uint8Array): void {
     if (this.websocket.readyState !== WebSocket.OPEN) {
       return;
@@ -80,29 +111,8 @@ export class WebsocketConnection {
     try {
       this.websocket.send(content);
     } catch (error: unknown) {
+      this.logger.error(error);
       this.websocket.close();
     }
-  }
-
-  /**
-   * Closes the websocket connection and removes the client from the linked {@link RealtimeNote}.
-   */
-  public disconnect(): void {
-    this.websocket.close();
-    this.realtimeNote.removeClient(this);
-  }
-
-  /**
-   * Processes an incoming message.
-   *
-   * @param messageType The message type
-   * @param decoder The decoder that contains the message payload
-   */
-  public handleIncomingMessage(
-    messageType: MessageType,
-    decoder: Decoder,
-  ): void {
-    this.connectionKeepAlivePing.checkForPingPongMessage(messageType) ||
-      this.realtimeNote.handleIncomingMessage(messageType, decoder, this);
   }
 }

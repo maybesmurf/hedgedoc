@@ -3,16 +3,9 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import {
-  OnGatewayConnection,
-  OnGatewayDisconnect,
-  SubscribeMessage,
-  WebSocketGateway,
-} from '@nestjs/websockets';
+import { OnGatewayConnection, WebSocketGateway } from '@nestjs/websockets';
 import { parse as parseCookie } from 'cookie';
 import { IncomingMessage } from 'http';
-import { decoding } from 'lib0';
-import Optional from 'optional-js';
 import WebSocket from 'ws';
 
 import { ConsoleLoggerService } from '../../logger/console-logger.service';
@@ -21,7 +14,6 @@ import { PermissionsService } from '../../permissions/permissions.service';
 import { SessionService } from '../../session/session.service';
 import { UsersService } from '../../users/users.service';
 import { HEDGEDOC_SESSION } from '../../utils/session';
-import { MessageType } from '../messages/message-type.enum';
 import { RealtimeNoteService } from '../realtime-note/realtime-note.service';
 import { WebsocketConnection } from '../realtime-note/websocket-connection';
 import { extractNoteIdFromRealtimePath } from './extract-note-id-from-realtime-path';
@@ -30,14 +22,7 @@ import { extractNoteIdFromRealtimePath } from './extract-note-id-from-realtime-p
  * Gateway implementing the realtime logic required for realtime note editing.
  */
 @WebSocketGateway({ path: '/realtime/' })
-export class WebsocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
-  private readonly socketToConnection = new Map<
-    WebSocket,
-    WebsocketConnection
-  >();
-
+export class WebsocketGateway implements OnGatewayConnection {
   constructor(
     private readonly logger: ConsoleLoggerService,
     private noteService: NotesService,
@@ -47,17 +32,6 @@ export class WebsocketGateway
     private sessionService: SessionService,
   ) {
     this.logger.setContext(WebsocketGateway.name);
-  }
-
-  /**
-   * Handler that is called when a WebSocket client disconnects.
-   * Removes the client from their Y.Doc, if they were part of any.
-   * @param client The WebSocket client that disconnects.
-   */
-  handleDisconnect(client: WebSocket): void {
-    Optional.ofNullable(this.socketToConnection.get(client)).ifPresent(() =>
-      this.socketToConnection.delete(client),
-    );
   }
 
   /**
@@ -145,7 +119,6 @@ export class WebsocketGateway
         user,
         realtimeNote,
       );
-      this.socketToConnection.set(clientSocket, connection);
 
       realtimeNote.connectClient(connection);
       this.logger.debug(
@@ -161,53 +134,5 @@ export class WebsocketGateway
       );
       clientSocket.close();
     }
-  }
-
-  /**
-   * Handler that is called when a SYNC message is received from a WebSocket client.
-   * SYNC messages are part of the Y-js protocol, containing changes on the note.
-   *
-   * @param client The WebSocket client that sent the message.
-   * @param decoder The decoder instance for decoding the message payload.
-   * @returns void If no response should be sent for this request back to the client.
-   * @returns Uint8Array Binary data that should be sent as a response to the message back to the client.
-   */
-  @SubscribeMessage(MessageType.SYNC)
-  handleMessageSync(client: WebSocket, decoder: decoding.Decoder): void {
-    Optional.ofNullable(this.socketToConnection.get(client))
-      .orElseThrow(() => new Error('Received message for unknown connection'))
-      .handleIncomingMessage(MessageType.SYNC, decoder);
-  }
-
-  /**
-   * Handler that is called when a AWARENESS message is received from a WebSocket client.
-   * AWARENESS messages are part of the Y-js protocol, containing e.g. the cursor states.
-   *
-   * @param client The WebSocket client that sent the message.
-   * @param decoder The decoder instance for decoding the message payload.
-   * @returns void If no response should be sent for this request back to the client.
-   * @returns Uint8Array Binary data that should be sent as a response to the message back to the client.
-   */
-  @SubscribeMessage(MessageType.AWARENESS)
-  handleMessageAwareness(client: WebSocket, decoder: decoding.Decoder): void {
-    Optional.ofNullable(this.socketToConnection.get(client))
-      .orElseThrow(() => new Error('Received message for unknown connection'))
-      .handleIncomingMessage(MessageType.AWARENESS, decoder);
-  }
-
-  /**
-   * Handler that is called when a HEDGEDOC message is received from a WebSocket client.
-   * HEDGEDOC messages are custom messages containing other real-time important information like permission changes.
-   *
-   * @param client The WebSocket client that sent the message.
-   * @param decoder The decoder instance for decoding the message payload.
-   * @returns void If no response should be sent for this request back to the client.
-   * @returns Uint8Array Binary data that should be sent as a response to the message back to the client.
-   */
-  @SubscribeMessage(MessageType.HEDGEDOC)
-  handleMessageHedgeDoc(client: WebSocket, decoder: decoding.Decoder): void {
-    Optional.ofNullable(this.socketToConnection.get(client))
-      .orElseThrow(() => new Error('Received message for unknown connection'))
-      .handleIncomingMessage(MessageType.HEDGEDOC, decoder);
   }
 }

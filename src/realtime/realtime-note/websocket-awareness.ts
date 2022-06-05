@@ -3,13 +3,10 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
-import { Decoder } from 'lib0/decoding';
+import { encodeAwarenessUpdateMessage } from '@hedgedoc/realtime-communication';
 import { Awareness } from 'y-protocols/awareness';
 
-import { decodeAwarenessMessage } from '../messages/decoding';
-import { encodeAwarenessMessage } from '../messages/encoding';
 import { RealtimeNote } from './realtime-note';
-import { WebsocketConnection } from './websocket-connection';
 
 interface ClientIdUpdate {
   added: number[];
@@ -41,7 +38,7 @@ export class WebsocketAwareness extends Awareness {
     updated,
     removed,
   }: ClientIdUpdate): void {
-    const binaryUpdate = encodeAwarenessMessage(this, [
+    const binaryUpdate = encodeAwarenessUpdateMessage(this, [
       ...added,
       ...updated,
       ...removed,
@@ -49,22 +46,5 @@ export class WebsocketAwareness extends Awareness {
     this.realtimeNote
       .getConnections()
       .forEach((client) => client.send(binaryUpdate));
-  }
-
-  /**
-   * Processes incoming AWARENESS messages.
-   *
-   * We're receiving an awareness message from any client.
-   * This is processed via {@link decodeAwarenessMessage}, which also incorporates this message in the {@link Awareness YAwareness}.
-   * All other clients are informed about the changes in the {@link Awareness YAwareness} via {@link distributeAwarenessUpdate}.
-   *
-   * @param client - the client who sent us the message
-   * @param decoder - the decoder object for this message
-   */
-  public processIncomingAwarenessMessage(
-    client: WebsocketConnection,
-    decoder: Decoder,
-  ): void {
-    decodeAwarenessMessage(this, decoder, client);
   }
 }

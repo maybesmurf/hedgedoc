@@ -4,10 +4,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { Logger } from '@nestjs/common';
-import { Decoder } from 'lib0/decoding';
 import { Awareness } from 'y-protocols/awareness';
 
-import { MessageType } from '../messages/message-type.enum';
 import { WebsocketAwareness } from './websocket-awareness';
 import { WebsocketConnection } from './websocket-connection';
 import { WebsocketDoc } from './websocket-doc';
@@ -110,33 +108,5 @@ export class RealtimeNote {
    */
   public getAwareness(): Awareness {
     return this.websocketAwareness;
-  }
-
-  /**
-   * Processes an incoming message.
-   *
-   * @param messageType The type of message
-   * @param decoder A decoder that contains the payload of the message
-   * @param origin The connection that received the message
-   */
-  public handleIncomingMessage(
-    messageType: MessageType,
-    decoder: Decoder,
-    origin: WebsocketConnection,
-  ): void {
-    switch (messageType) {
-      case MessageType.SYNC:
-        this.websocketDoc.processIncomingSyncMessage(origin, decoder);
-        break;
-      case MessageType.AWARENESS:
-        this.websocketAwareness.processIncomingAwarenessMessage(
-          origin,
-          decoder,
-        );
-        break;
-      case MessageType.HEDGEDOC:
-        this.logger.debug('Received HEDGEDOC message. Not implemented yet.');
-        break;
-    }
   }
 }
